@@ -15,12 +15,19 @@ ymax = 10007555
 # m, the actual size of a “500-m” MODIS sinusoidal grid cell.
 w = 463.31271653
 
-def modis_500m_coor(i, j, H, V):
+def modis_500m_coor(i, j, H, V, scalar=False):
     # i, j are the row and column of in MODIS tile H, V
     # Return the lat, lon in radiant
     x = (j + 0.5) * w + H*T + xmin 
     y = ymax - (i + 0.5)*w -V*T
-    lat = y/R
-    lon = x/(R*np.cos(lat))
     
-    return lat, lon
+    if scalar:
+        lat = y/R
+        lon = x/(R*np.cos(lat))
+    else:
+        lat = y/R
+        lat = np.tile(lat, (len(i), 1)).transpose()
+        x = np.tile(x, (len(i), 1))
+        lon = x/(R*np.cos(lat))
+    
+    return lat*57.2958, lon*57.2958
