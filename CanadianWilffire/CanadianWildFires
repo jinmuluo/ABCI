@@ -1,0 +1,124 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var Canada = 
+    /* color: #d63000 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-141.081106840379, 69.68389701598194],
+          [-140.905325590379, 60.01559545094596],
+          [-130.534231840379, 54.310270106331615],
+          [-123.678763090379, 48.625823889390546],
+          [-110.319388090379, 48.85766267103987],
+          [-101.178763090379, 48.97318118422726],
+          [-95.377981840379, 49.20341719600186],
+          [-90.456106840379, 48.15893541193241],
+          [-85.358450590379, 47.68775890562303],
+          [-82.721731840379, 45.88254659789687],
+          [-82.370169340379, 43.50891465826439],
+          [-83.073294340379, 41.95968864485657],
+          [-79.030325590379, 42.868108174617106],
+          [-74.460013090379, 44.89498490853269],
+          [-71.120169340379, 45.14349306417887],
+          [-69.010794340379, 47.33155811891349],
+          [-67.604544340379, 47.33155811891349],
+          [-67.956106840379, 45.14349306417887],
+          [-66.374075590379, 43.50891465826439],
+          [-58.81548184037899, 45.39092265983063],
+          [-50.55376309037899, 48.625823889390546],
+          [-56.17876309037899, 55.81995165231728],
+          [-69.538138090379, 62.87030070601467],
+          [-98.717825590379, 67.36957368828737],
+          [-133.346731840379, 69.5000115388786]]]),
+    eastCanada = 
+    /* color: #98ff00 */
+    /* shown: false */
+    ee.Geometry.Polygon(
+        [[[-80.085013090379, 54.51485948757966],
+          [-82.721731840379, 45.51423302166389],
+          [-82.897513090379, 42.22057951473038],
+          [-79.557669340379, 43.12523804096085],
+          [-76.569388090379, 43.89016779335855],
+          [-73.756888090379, 44.89498490853269],
+          [-70.944388090379, 45.14349306417887],
+          [-69.186575590379, 47.68775890562303],
+          [-67.428763090379, 45.39092265983063],
+          [-66.901419340379, 44.52020038382247],
+          [-65.143606840379, 43.253399413892794],
+          [-60.57329434037899, 45.51423302166389],
+          [-50.55376309037899, 48.04154358899083],
+          [-57.76079434037899, 59.12536279402005],
+          [-75.163138090379, 64.50602978671496],
+          [-82.018606840379, 59.83942963646645]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// ROI
+var eastCanada = ee.FeatureCollection(eastCanada);
+var Canada = ee.FeatureCollection(Canada);
+
+var countries = ee.FeatureCollection("FAO/GAUL/2015/level0");
+var real_Canada = countries.filter(ee.Filter.eq('ADM0_NAME', 'Canada'));
+
+// Set up the Date want to explore
+var sDate = '2023-05-01';
+var eDate = '2023-07-01';
+
+// Load the MODIS burned area dataset
+var burnedArea  = ee.ImageCollection('MODIS/061/MCD64A1')
+                .filter(ee.Filter.date(sDate, eDate))
+                .select('BurnDate');
+
+// Chose the variables and regions to show 
+//var modisScale = ee.Image(burnedArea.first());
+var roi_burnedArea = burnedArea.mosaic().clip(Canada);
+
+// Set up the view parameters and Add the map
+var burnedAreaVis = {
+  min: 0.0,
+  max: 366.0,
+  palette: ['4e0400', '951003', 'c61503', 'ff1901'],
+};
+
+Map.centerObject(eastCanada)
+Map.addLayer(roi_burnedArea, burnedAreaVis, 'Burned Area');
+
+
+// Calculate the monthly modis burned area
+var modis_first = ee.Image(burnedArea.first());
+var modis_coord = modis_first.projection()
+var modis_scale = modis_first.projection().nominalScale()
+
+// for one Image regions reduction
+var BACount = function(Image){
+  var BAMonthly = Image.reduceRegion({
+    reducer: ee.Reducer.count(),
+    geometry: Canada,
+    scale: 463.3127,
+    maxPixels: 1e10
+  });
+  return BAMonthly;
+};
+
+var testImage = burnedArea.filter(ee.Filter.date('2010-06-01', '2010-07-01'));
+var testImage = ee.Image(testImage.first());
+
+var test = BACount(testImage);
+
+//For Image collection reduction
+var BASta = burnedArea.map(function(image){
+  return image.reduceRegions({
+    collection:Canada, 
+    reducer:ee.Reducer.count(), 
+    scale: modis_scale,
+    crs: modis_coord,
+  });
+});
+
+var BASta = BASta.flatten()
+print(BASta)
+
+if (false){
+Export.table.toDrive({
+  collection: BASta,
+  fileNamePrefix: 'Canadian Burned area pixels count',
+  fileFormat: 'csv',
+  //selectors: ['Date', 'Pixel count', 'polygon'],
+});
+}
