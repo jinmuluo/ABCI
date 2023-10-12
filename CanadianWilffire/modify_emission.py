@@ -8,7 +8,7 @@ def main():
     file_loc = "/glade/work/jinmuluo/CanadianFire2023/EmissionInventory/"
     t_start = '2023-01-01'
     t_end = "2023-12-31"
-    he_date = "2023-06-01"
+    he_date = "2023-06-06"
     var = "bb"
 
     finn = [f for f in os.listdir(target) if os.path.isfile(os.path.join(target, f))]
